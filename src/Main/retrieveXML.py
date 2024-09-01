@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
+import song
 
 def parse_xml(file_path):
     try:
@@ -11,21 +12,23 @@ def parse_xml(file_path):
     except FileNotFoundError as e:
         print(f"XML not found: {e}")
         return {}
-    song_to_path = {}
+
+    songs = []
 
     for track in root.findall(".//TRACK"):
         title = track.get("Name")
-        location = track.get("Location")
+        filepath = track.get("Location")
 
-        if title and location:
-            if location.startswith("file://localhost"):
-                location = location.replace("file://localhost", "")
+        if title and filepath:
+            if filepath.startswith("file://localhost"):
+                filepath = filepath.replace("file://localhost", "")
 
-            location = location.replace("%20", " ")
+            filepath = filepath.replace("%20", " ")
 
-            if os.path.exists(location):
-                song_to_path[title] = location
-            else:
-                print(f"File not found: {title}, {location}")
+            if os.path.exists(filepath):
+                this_song = song.Song(title, filepath)
+                songs.append(this_song)
+            # else:
+            #     print(f"File not found: {title}, {filepath}")
 
-    return song_to_path
+    return songs

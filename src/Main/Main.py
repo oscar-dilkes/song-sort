@@ -2,21 +2,18 @@ import retrieveXML
 import audioAnalyser
 import pandas as pd
 
+from src.Main.audioAnalyser import extract_features, para_extract
+
+
 def main():
     xml_file_path = "/Users/oscardilkes/Documents/collection.xml"
 
-    song_file_dict = retrieveXML.parse_xml(xml_file_path)
+    songs = retrieveXML.parse_xml(xml_file_path)
 
-    if not song_file_dict:
-        print("XML parse error.")
-        return
+    processed_songs = para_extract(songs)
 
-    df = pd.DataFrame(song_file_dict.items(), columns=['Title', 'Path'])
-
-    features = audioAnalyser.extract_features(df.iloc[500, 1])
-
-    print(features)
-
+    for song in processed_songs:
+        print(song.title)
 
 if __name__ == "__main__":
         main()
