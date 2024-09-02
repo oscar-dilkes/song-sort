@@ -1,7 +1,7 @@
 class Song:
 
-    def __init__(self, id, title, filepath):
-        self.id = id
+    def __init__(self, track_id, title, filepath):
+        self.track_id = track_id
         self.title = title
         self.filepath = filepath
 
@@ -18,4 +18,4 @@ class Song:
         self.zcr = zcr
 
     def set_energy_score(self, energy_score):
-        self.energy_score = energy_score
+        self.energy_score = int(energy_score)
