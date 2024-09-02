@@ -1,6 +1,7 @@
 class Song:
 
-    def __init__(self, title, filepath):
+    def __init__(self, id, title, filepath):
+        self.id = id
         self.title = title
         self.filepath = filepath
 

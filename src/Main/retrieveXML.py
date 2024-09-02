@@ -1,5 +1,7 @@
 import os
 import xml.etree.ElementTree as ET
+from typing import Dict
+
 import song
 
 def parse_xml(file_path):
@@ -13,21 +15,22 @@ def parse_xml(file_path):
         print(f"XML not found: {e}")
         return {}
 
-    songs = []
+    songs: Dict[str, song.Song] = dict()
 
     for track in root.findall(".//TRACK"):
+        track_id = track.get("TrackID")
         title = track.get("Name")
         filepath = track.get("Location")
 
-        if title and filepath:
+        if track_id and title and filepath:
             if filepath.startswith("file://localhost"):
                 filepath = filepath.replace("file://localhost", "")
 
             filepath = filepath.replace("%20", " ")
 
             if os.path.exists(filepath):
-                this_song = song.Song(title, filepath)
-                songs.append(this_song)
+                this_song = song.Song(track_id, title, filepath)
+                songs.update({track_id : this_song})
             # else:
             #     print(f"File not found: {title}, {filepath}")
 

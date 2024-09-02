@@ -26,8 +26,9 @@ def extract_features(song):
     return None
 
 def para_extract(songs, num_workers = os.cpu_count()):
+
     with Pool(processes=num_workers) as pool:
-        results = pool.map(extract_features, songs)
+        results = pool.map(extract_features, songs.values())
 
     return [song for song in results if song is not None]
 
