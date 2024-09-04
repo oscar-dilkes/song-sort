@@ -7,23 +7,24 @@ import m3uHandler
 
 from src.Main.audioAnalyser import para_extract
 
-
 def main():
     xml_file_path = "/Users/oscardilkes/Documents/collection.xml"
 
     songs = xmlHandler.parse_xml(xml_file_path)
 
-    songs = dict(islice(songs.items(), 50))
+    songs = dict(islice(songs.items(), 80))
 
     mydb = dbHandler.connect_mysql()
 
-    songs = dbHandler.dict_remove_existing(mydb, songs)
+    new_songs, existing_songs = dbHandler.dict_split_existing(mydb, songs)
 
-    para_extract(songs)
+    para_extract(new_songs)
 
-    dbHandler.update_table(mydb, songs)
+    combined_songs = {**new_songs, **existing_songs}
 
-    filtered_songs = {track_id: song for track_id, song in songs.items() if song.energy_score is not None}
+    dbHandler.update_table(mydb, new_songs)
+
+    filtered_songs = {track_id: song for track_id, song in combined_songs.items() if song.energy_score is not None}
 
     sorted_songs = dict(sorted(filtered_songs.items(), key=lambda item: item[1].energy_score))
 

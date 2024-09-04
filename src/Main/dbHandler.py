@@ -84,13 +84,57 @@ def validate_song(mydb, track_id):
     mycursor.close()  # Close cursor after fetching result
     return result[0] > 0
 
-def dict_remove_existing(mydb, songs):
-    keys_to_remove = []
-    for track_id in list(songs.keys()):
+def dict_split_existing(mydb, songs):
+    # Initialize two dictionaries
+    new_songs = {}
+    existing_songs = {}
+
+    # Iterate through the songs and split them based on their existence in the database
+    for track_id, song in songs.items():
         if validate_song(mydb, track_id):
-            keys_to_remove.append(track_id)
+            # Song exists in the database
+            existing_songs[track_id] = song
+        else:
+            # Song does not exist in the database
+            new_songs[track_id] = song
 
-    for key in keys_to_remove:
-        del songs[key]
+    # Fetch energy scores for the songs that are already in the database
+    existing_songs = fetch_energy_scores(mydb, existing_songs)
 
-    return songs
+    return new_songs, existing_songs
+
+def fetch_energy_scores(mydb, existing_songs):
+    track_ids = list(existing_songs.keys())
+
+    if not track_ids:
+        return existing_songs
+
+    query = "SELECT id, filepath, energy_score FROM songs WHERE id IN (%s)" % ','.join(['%s'] * len(track_ids))
+
+    cursor = mydb.cursor()
+    cursor.execute(query, track_ids)
+    results = cursor.fetchall()
+    cursor.close()
+
+    updates_needed = []
+
+    for track_id, db_filepath, energy_score in results:
+        track_id = str(track_id)
+        if track_id in existing_songs:
+            song = existing_songs[track_id]
+            song.set_energy_score(energy_score)
+            if song.filepath != db_filepath:
+                updates_needed.append((song.filepath, track_id))
+
+    if updates_needed:
+        update_filepaths(mydb, updates_needed)
+    return existing_songs
+
+def update_filepaths(mydb, updates):
+    sql = "UPDATE songs SET filepath = %s WHERE id = %s"
+    cursor = mydb.cursor()
+
+    cursor.executemany(sql, updates)
+    mydb.commit()
+    cursor.close()
+    print(f"Batch updated {len(updates)} file paths.")
