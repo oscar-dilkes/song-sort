@@ -3,6 +3,8 @@ import dbHandler
 
 from itertools import islice
 
+import m3uHandler
+
 from src.Main.audioAnalyser import para_extract
 
 
@@ -16,8 +18,6 @@ def main():
     mydb = dbHandler.connect_mysql()
 
     songs = dbHandler.dict_remove_existing(mydb, songs)
-
-    print(songs)
 
     para_extract(songs)
 
@@ -37,12 +37,15 @@ def main():
     medium_energy = dict(sorted_items[split1:split2])
     high_energy = dict(sorted_items[split2:])
 
-    low_energy_playlist = xmlHandler.create_playlist(low_energy, "Low Energy")
-    medium_energy_playlist = xmlHandler.create_playlist(medium_energy, "Medium Energy")
-    high_energy_playlist = xmlHandler.create_playlist(high_energy, "High Energy")
+    # low_energy_playlist = xmlHandler.create_playlist(low_energy, "Low Energy")
+    # medium_energy_playlist = xmlHandler.create_playlist(medium_energy, "Medium Energy")
+    # high_energy_playlist = xmlHandler.create_playlist(high_energy, "High Energy")
+    #
+    # xmlHandler.add_all_playlists(xml_file_path, [low_energy_playlist, medium_energy_playlist, high_energy_playlist])
 
-    xmlHandler.add_all_playlists(xml_file_path, [low_energy_playlist, medium_energy_playlist, high_energy_playlist])
-
+    m3uHandler.create_m3u_playlist(low_energy, "Low Energy")
+    m3uHandler.create_m3u_playlist(medium_energy, "Medium Energy")
+    m3uHandler.create_m3u_playlist(high_energy, "High Energy")
 
 if __name__ == "__main__":
         main()

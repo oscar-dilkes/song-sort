@@ -38,6 +38,7 @@ def create_table(mydb):
     CREATE TABLE songs (
         id INT PRIMARY KEY,
         title VARCHAR(255),
+        duration INT,
         filepath VARCHAR(255),
         tempo FLOAT,
         rms FLOAT,
@@ -52,12 +53,13 @@ def add_song(mydb, song):
     mycursor = mydb.cursor()
     # Insert song data into the table
     sql = """
-        INSERT INTO songs (id, title, filepath, tempo, rms, sc, zcr, energy_score)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO songs (id, title, duration, filepath, tempo, rms, sc, zcr, energy_score)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
     values = (
         song.track_id,
         song.title,
+        int(song.duration) if song.duration is not None else 0,
         song.filepath,
         float(song.tempo) if song.tempo is not None else 0.0,  # Default to 0.0 if None
         float(song.rms) if song.rms is not None else 0.0,      # Default to 0.0 if None
