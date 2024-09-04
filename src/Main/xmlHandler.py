@@ -1,7 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
 from typing import Dict
-
 import song
 
 def parse_xml(file_path):
@@ -17,6 +16,7 @@ def parse_xml(file_path):
 
     songs: Dict[str, song.Song] = dict()
 
+    # extract song data
     for track in root.findall(".//TRACK"):
         track_id = track.get("TrackID")
         title = track.get("Name")
@@ -31,16 +31,17 @@ def parse_xml(file_path):
 
             if os.path.exists(filepath):
                 this_song = song.Song(track_id, title, duration, filepath)
-                songs.update({track_id : this_song})
-            # else:
-            #     print(f"File not found: {title}, {filepath}")
+                songs.update({track_id: this_song})
 
     return songs
 
+# subsequent two nodes potentially redundant - m3u method used now
 def create_playlist(songs: Dict, name):
+    # create playlist node
     length = str(len(songs))
     playlist = ET.Element('NODE', {'Name': name, 'Type': "1", 'KeyType': "0", 'Entries': length})
 
+    # add each song to playlist
     for song in songs.values():
         track_id_string = str(song.track_id)
         ET.SubElement(playlist, 'TRACK', {'Key': track_id_string})
@@ -49,6 +50,7 @@ def create_playlist(songs: Dict, name):
 
 def add_all_playlists(file_path, playlists_to_add):
     try:
+        # parse xml file to add playlists
         tree = ET.parse(file_path)
         root = tree.getroot()
     except ET.ParseError as e:
@@ -63,6 +65,7 @@ def add_all_playlists(file_path, playlists_to_add):
         print("PLAYLISTS node not found in the XML.")
         return
 
+    # append new playlists
     for playlist in playlists_to_add:
         playlists.append(playlist)
 
