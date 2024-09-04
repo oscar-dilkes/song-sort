@@ -1,8 +1,9 @@
 class Song:
 
-    def __init__(self, track_id, title, filepath):
+    def __init__(self, track_id, title, duration, filepath):
         self.track_id = track_id
         self.title = title
+        self.duration = duration
         self.filepath = filepath
 
         self.tempo = None

@@ -4,6 +4,7 @@ def connect_mysql():
     with open('/Users/oscardilkes/PycharmProjects/songSort/pw', 'r') as file:
         mysql_password = file.read().rstrip()
 
+    # Establish database connection
     mydb = mysql.connector.connect(
         host="localhost",
         user="root",
@@ -11,22 +12,28 @@ def connect_mysql():
         database="songSort"
     )
 
-    mycursor = mydb.cursor()
+    # Check if the table exists, if not, create it
+    if not validate_table(mydb):
+        create_table(mydb)
 
-    if not validate_table(mycursor):
-        create_table(mycursor)
+    return mydb
 
-    return mycursor
-
-def validate_table(mycursor):
+def validate_table(mydb):
+    # Use a buffered cursor to handle the result set properly
+    mycursor = mydb.cursor(buffered=True)
     try:
-        mycursor.execute(f"SELECT 1 FROM {"songs"} LIMIT 1;")
+        # Check if the 'songs' table exists
+        mycursor.execute("SELECT 1 FROM songs LIMIT 1;")
+        mycursor.close()  # Close cursor after use
         return True
-    except:
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        mycursor.close()  # Ensure cursor is closed in case of error
         return False
 
-
-def create_table(mycursor):
+def create_table(mydb):
+    mycursor = mydb.cursor()
+    # Create the 'songs' table if it doesn't exist
     mycursor.execute("""
     CREATE TABLE songs (
         id INT PRIMARY KEY,
@@ -39,43 +46,46 @@ def create_table(mycursor):
         energy_score INT
     )
     """)
+    mycursor.close()  # Close cursor after use
 
-def add_song(mycursor, song):
+def add_song(mydb, song):
+    mycursor = mydb.cursor()
+    # Insert song data into the table
     sql = """
         INSERT INTO songs (id, title, filepath, tempo, rms, sc, zcr, energy_score)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
+    """
     values = (
         song.track_id,
         song.title,
         song.filepath,
-        song.tempo,
-        song.rms,
-        song.sc,
-        song.zcr,
-        song.energy_score
+        float(song.tempo) if song.tempo is not None else 0.0,  # Default to 0.0 if None
+        float(song.rms) if song.rms is not None else 0.0,      # Default to 0.0 if None
+        float(song.sc) if song.sc is not None else 0.0,        # Default to 0.0 if None
+        float(song.zcr) if song.zcr is not None else 0.0,      # Default to 0.0 if None
+        int(song.energy_score) if song.energy_score is not None else 0  # Default to 0 if None
     )
     mycursor.execute(sql, values)
+    mydb.commit()  # Commit the transaction
+    mycursor.close()  # Close cursor after use
 
-def update_table(mycursor, songs):
+def update_table(mydb, songs):
     for song in songs.values():
-        add_song(mycursor, song)
+        add_song(mydb, song)
 
-
-def validate_song(mycursor, track_id):
+def validate_song(mydb, track_id):
+    # Use a buffered cursor to handle the result set properly
+    mycursor = mydb.cursor(buffered=True)
     sql = "SELECT COUNT(*) FROM songs WHERE id = %s"
-
     mycursor.execute(sql, (track_id,))
-
     result = mycursor.fetchone()
-
+    mycursor.close()  # Close cursor after fetching result
     return result[0] > 0
 
-def dict_remove_existing(mycursor, songs):
+def dict_remove_existing(mydb, songs):
     keys_to_remove = []
-
     for track_id in list(songs.keys()):
-        if validate_song(mycursor, track_id):
+        if validate_song(mydb, track_id):
             keys_to_remove.append(track_id)
 
     for key in keys_to_remove:

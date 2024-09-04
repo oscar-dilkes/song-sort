@@ -16,16 +16,23 @@ def extract_features(song):
 
         song.set_features(tempo, rms, sc, zcr)
         compute_energy_score(song, 0.3, 0.2, 0.2)
-        print(song.title + " " + str(song.energy_score))
+        return song
     except FileNotFoundError:
         print(f"Audio file not found: {song.filepath}")
     except Exception as e:
         print(f"Error processing file {song.filepath}: {e}")
+    return None
 
 def para_extract(songs, num_workers = os.cpu_count()):
 
     with Pool(processes=num_workers) as pool:
-        pool.map(extract_features, songs.values())
+        results = pool.map(extract_features, songs.values())
+
+    songs_to_keep = {key: song for key, song in zip(songs.keys(), results) if song is not None}
+
+    songs.clear()
+    songs.update(songs_to_keep)
+
 
 def compute_energy_score(song, r_factor, sc_factor, zcr_factor):
     energy_score = (r_factor * song.rms) + (sc_factor * song.sc) + (zcr_factor * song.zcr)
