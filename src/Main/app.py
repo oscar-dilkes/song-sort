@@ -9,21 +9,15 @@ st.title("SongSort")
 # File selector for the collection.xml file
 collection_file_path = st.file_uploader("Choose your Rekordbox collection.xml file", type="xml")
 
-# File selector for the password config file
-password_file_path = st.file_uploader("Choose your MySQL password configuration file", type="txt")
-
 # Directory selector for where to save created playlists
 playlist_output_dir = st.text_input("Enter the directory path to save playlists")
 
 # Button to start the process
 if st.button("Start Organising"):
-    if collection_file_path and password_file_path and playlist_output_dir:
+    if collection_file_path and playlist_output_dir:
         # Save uploaded files temporarily
         with open("collection.xml", "wb") as f:
             f.write(collection_file_path.getbuffer())
-
-        with open("pw", "wb") as f:
-            f.write(password_file_path.getbuffer())
 
         # Make sure the output directory exists
         if not os.path.exists(playlist_output_dir):
@@ -31,7 +25,7 @@ if st.button("Start Organising"):
 
         try:
             # Call the main function and capture any songs that failed to load/analyze
-            failed_songs = main(xml_path="collection.xml", password_path="pw", output_dir=playlist_output_dir)
+            failed_songs = main(xml_path="collection.xml", output_dir=playlist_output_dir)
 
             if failed_songs:
                 # Display failed songs in a table

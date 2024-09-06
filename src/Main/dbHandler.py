@@ -1,65 +1,65 @@
-import mysql.connector
+import sqlite3
+import os
 
-def connect_mysql(mysql_password):
+def connect_sqlite(db_path="songSort.db"):
+    """
+    Connect to SQLite database, creating it if it doesn't exist.
+    Args:
+        db_path (str): The path to the SQLite database file.
+    Returns:
+        sqlite3.Connection: SQLite database connection object.
+    """
     try:
-        mydb = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password=mysql_password,
-            database="songSort"
-        )
+        # Connect to the SQLite database (creates file if it doesn't exist)
+        conn = sqlite3.connect(db_path)
+        print(f"Connected to SQLite database at {db_path}")
 
-        if not validate_table(mydb):
-            create_table(mydb)
+        # Create the 'songs' table if it doesn't exist
+        create_table(conn)
+        return conn
+    except sqlite3.Error as e:
+        print(f"Error connecting to SQLite: {e}")
+        return None
 
-        return mydb
-
-    except FileNotFoundError as e:
-        print(f"Password file not found: {e}")
-    except mysql.connector.Error as err:
-        print(f"Database connection error: {err}")
-
-def validate_table(mydb):
-    cursor = mydb.cursor(buffered=True)
+def create_table(conn):
+    """
+    Create the 'songs' table in SQLite if it doesn't exist.
+    Args:
+        conn (sqlite3.Connection): SQLite database connection object.
+    """
     try:
-        # check if table exists
-        cursor.execute("SELECT 1 FROM songs LIMIT 1;")
-        return True
-    except mysql.connector.Error as err:
-        print(f"Error validating table: {err}")
-        return False
-    finally:
-        cursor.close()
-
-def create_table(mydb):
-    try:
-        cursor = mydb.cursor()
+        cursor = conn.cursor()
         cursor.execute("""
-        CREATE TABLE songs (
-            id INT PRIMARY KEY,
-            title VARCHAR(255),
-            duration INT,
-            filepath VARCHAR(255),
-            tempo FLOAT,
-            rms FLOAT,
-            sc FLOAT,
-            zcr FLOAT,
-            energy_score INT
+        CREATE TABLE IF NOT EXISTS songs (
+            id INTEGER PRIMARY KEY,
+            title TEXT,
+            duration INTEGER,
+            filepath TEXT,
+            tempo REAL,
+            rms REAL,
+            sc REAL,
+            zcr REAL,
+            energy_score INTEGER
         )
         """)
-    except mysql.connector.Error as err:
-        print(f"Error creating table: {err}")
-    finally:
-        cursor.close()
+        conn.commit()
+        print("Table 'songs' checked/created successfully.")
+    except sqlite3.Error as e:
+        print(f"Error creating table: {e}")
 
-def add_song(mydb, song):
+def add_song(conn, song):
+    """
+    Add a song to the SQLite database.
+    Args:
+        conn (sqlite3.Connection): SQLite database connection object.
+        song (Song): Song object containing song details.
+    """
     try:
-        cursor = mydb.cursor()
+        cursor = conn.cursor()
         sql = """
             INSERT INTO songs (id, title, duration, filepath, tempo, rms, sc, zcr, energy_score)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        # handle none values here to prep for sql and m3u writing
         values = (
             song.track_id,
             song.title,
@@ -72,59 +72,88 @@ def add_song(mydb, song):
             int(song.energy_score) if song.energy_score is not None else 0
         )
         cursor.execute(sql, values)
-        mydb.commit()
-    except mysql.connector.Error as err:
-        print(f"Error adding song: {err}")
-    finally:
-        cursor.close()
+        conn.commit()
+        print(f"Song added to the database: {song.title}")
+    except sqlite3.Error as e:
+        print(f"Error adding song: {e}")
 
-def update_table(mydb, songs):
+def update_table(conn, songs):
+    """
+    Update the SQLite table with new songs.
+    Args:
+        conn (sqlite3.Connection): SQLite database connection object.
+        songs (dict): Dictionary of Song objects keyed by their track IDs.
+    """
     for song in songs.values():
-        add_song(mydb, song)
+        add_song(conn, song)
 
-def validate_song(mydb, track_id):
-    cursor = mydb.cursor(buffered=True)
+def validate_song(conn, track_id):
+    """
+    Validate if a song exists in the SQLite database.
+    Args:
+        conn (sqlite3.Connection): SQLite database connection object.
+        track_id (str): Track ID of the song to validate.
+    Returns:
+        bool: True if the song exists, False otherwise.
+    """
+    cursor = conn.cursor()
     try:
-        # check if song exists in table
-        sql = "SELECT COUNT(*) FROM songs WHERE id = %s"
+        sql = "SELECT COUNT(*) FROM songs WHERE id = ?"
         cursor.execute(sql, (track_id,))
         result = cursor.fetchone()
         return result[0] > 0
-    except mysql.connector.Error as err:
-        print(f"Error validating song: {err}")
+    except sqlite3.Error as e:
+        print(f"Error validating song: {e}")
         return False
     finally:
         cursor.close()
 
-def dict_split_existing(mydb, songs):
+def dict_split_existing(conn, songs):
+    """
+    Split songs into new and existing based on their existence in the SQLite database.
+    Args:
+        conn (sqlite3.Connection): SQLite database connection object.
+        songs (dict): Dictionary of Song objects keyed by their track IDs.
+    Returns:
+        tuple: (new_songs, existing_songs) where each is a dictionary of Song objects.
+    """
     new_songs = {}
     existing_songs = {}
 
     for track_id, song in songs.items():
-        if validate_song(mydb, track_id):
+        if validate_song(conn, track_id):
             existing_songs[track_id] = song
         else:
             new_songs[track_id] = song
 
-    existing_songs = fetch_energy_scores(mydb, existing_songs)
+    # Fetch energy scores for the songs that are already in the database
+    existing_songs = fetch_energy_scores(conn, existing_songs)
 
     return new_songs, existing_songs
 
-def fetch_energy_scores(mydb, existing_songs):
+def fetch_energy_scores(conn, existing_songs):
+    """
+    Fetch energy scores for existing songs from the SQLite database.
+    Args:
+        conn (sqlite3.Connection): SQLite database connection object.
+        existing_songs (dict): Dictionary of Song objects keyed by their track IDs.
+    Returns:
+        dict: Updated dictionary of existing Song objects with fetched energy scores.
+    """
     track_ids = list(existing_songs.keys())
 
     if not track_ids:
         return existing_songs
 
+    query = "SELECT id, filepath, energy_score FROM songs WHERE id IN (%s)" % ','.join('?' * len(track_ids))
+
+    cursor = conn.cursor()
     try:
-        query = "SELECT id, filepath, energy_score FROM songs WHERE id IN (%s)" % ','.join(['%s'] * len(track_ids))
-        cursor = mydb.cursor()
         cursor.execute(query, track_ids)
         results = cursor.fetchall()
 
         updates_needed = []
 
-        # update energy scores and check if filepaths have changed
         for track_id, db_filepath, energy_score in results:
             track_id = str(track_id)
             if track_id in existing_songs:
@@ -134,23 +163,29 @@ def fetch_energy_scores(mydb, existing_songs):
                     updates_needed.append((song.filepath, track_id))
 
         if updates_needed:
-            update_filepaths(mydb, updates_needed)
+            update_filepaths(conn, updates_needed)
 
-    except mysql.connector.Error as err:
-        print(f"Error fetching energy scores: {err}")
+    except sqlite3.Error as e:
+        print(f"Error fetching energy scores: {e}")
     finally:
         cursor.close()
 
     return existing_songs
 
-def update_filepaths(mydb, updates):
+def update_filepaths(conn, updates):
+    """
+    Update file paths for songs in the SQLite database.
+    Args:
+        conn (sqlite3.Connection): SQLite database connection object.
+        updates (list): List of tuples containing (filepath, track_id) for updates.
+    """
+    sql = "UPDATE songs SET filepath = ? WHERE id = ?"
+    cursor = conn.cursor()
     try:
-        sql = "UPDATE songs SET filepath = %s WHERE id = %s"
-        cursor = mydb.cursor()
         cursor.executemany(sql, updates)
-        mydb.commit()
+        conn.commit()
         print(f"Batch updated {len(updates)} file paths.")
-    except mysql.connector.Error as err:
-        print(f"Error updating file paths: {err}")
+    except sqlite3.Error as e:
+        print(f"Error updating file paths: {e}")
     finally:
         cursor.close()

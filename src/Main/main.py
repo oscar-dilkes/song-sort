@@ -1,10 +1,12 @@
+import os
+
 import xmlHandler
 import dbHandler
 from itertools import islice
 import m3uHandler
 from src.Main.audioAnalyser import para_extract
 
-def main(xml_path, password_path, output_dir):
+def main(xml_path, output_dir):
     failed_songs = []
     try:
         songs, failed_songs_xml = xmlHandler.parse_xml(xml_path)
@@ -13,13 +15,11 @@ def main(xml_path, password_path, output_dir):
         # limit songs for testing
         songs = dict(islice(songs.items(), 30))
 
-        with open(password_path, 'r') as file:
-            mysql_password = file.read().rstrip()
-
-        mydb = dbHandler.connect_mysql(mysql_password)
+        db_path = os.path.join(output_dir, "songSort.db")
+        conn = dbHandler.connect_sqlite(db_path)
 
         # split into new and existing (in database)
-        new_songs, existing_songs = dbHandler.dict_split_existing(mydb, songs)
+        new_songs, existing_songs = dbHandler.dict_split_existing(conn, songs)
 
         # extract audio features & calculate energy score
         failed_songs_analysis = para_extract(new_songs)
@@ -27,7 +27,7 @@ def main(xml_path, password_path, output_dir):
 
         combined_songs = {**new_songs, **existing_songs}
 
-        dbHandler.update_table(mydb, new_songs)
+        dbHandler.update_table(conn, new_songs)
 
         filtered_songs = {track_id: song for track_id, song in combined_songs.items() if song.energy_score is not None}
 
@@ -51,8 +51,6 @@ def main(xml_path, password_path, output_dir):
 
     except (FileNotFoundError, IOError) as e:
         print(f"Error processing XML file: {e}")
-    except dbHandler.DatabaseError as e:
-        print(f"Database error: {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
