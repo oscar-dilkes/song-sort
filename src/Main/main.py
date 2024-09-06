@@ -4,22 +4,26 @@ from itertools import islice
 import m3uHandler
 from src.Main.audioAnalyser import para_extract
 
-def main():
-    xml_file_path = "/Users/oscardilkes/Documents/collection.xml"
-
+def main(xml_path, password_path, output_dir):
+    failed_songs = []
     try:
-        songs = xmlHandler.parse_xml(xml_file_path)
+        songs, failed_songs_xml = xmlHandler.parse_xml(xml_path)
+        failed_songs.extend(failed_songs_xml)
 
         # limit songs for testing
         songs = dict(islice(songs.items(), 30))
 
-        mydb = dbHandler.connect_mysql()
+        with open(password_path, 'r') as file:
+            mysql_password = file.read().rstrip()
+
+        mydb = dbHandler.connect_mysql(mysql_password)
 
         # split into new and existing (in database)
         new_songs, existing_songs = dbHandler.dict_split_existing(mydb, songs)
 
         # extract audio features & calculate energy score
-        para_extract(new_songs)
+        failed_songs_analysis = para_extract(new_songs)
+        failed_songs.extend(failed_songs_analysis)
 
         combined_songs = {**new_songs, **existing_songs}
 
@@ -39,9 +43,11 @@ def main():
         medium_energy = dict(sorted_items[split1:split2])
         high_energy = dict(sorted_items[split2:])
 
-        m3uHandler.create_m3u_playlist(low_energy, "Low Energy")
-        m3uHandler.create_m3u_playlist(medium_energy, "Medium Energy")
-        m3uHandler.create_m3u_playlist(high_energy, "High Energy")
+        m3uHandler.create_m3u_playlist(low_energy, "Low Energy", output_dir)
+        m3uHandler.create_m3u_playlist(medium_energy, "Medium Energy", output_dir)
+        m3uHandler.create_m3u_playlist(high_energy, "High Energy", output_dir)
+
+        return failed_songs
 
     except (FileNotFoundError, IOError) as e:
         print(f"Error processing XML file: {e}")

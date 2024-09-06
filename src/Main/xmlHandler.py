@@ -4,6 +4,7 @@ from typing import Dict
 import song
 
 def parse_xml(file_path):
+    failed_songs = []
     try:
         tree = ET.parse(file_path)
         root = tree.getroot()
@@ -32,8 +33,10 @@ def parse_xml(file_path):
             if os.path.exists(filepath):
                 this_song = song.Song(track_id, title, duration, filepath)
                 songs.update({track_id: this_song})
+            else:
+                failed_songs.append({"Track ID": track_id, "Title": title, "Reason": "File not found", "Filepath": filepath})
 
-    return songs
+    return songs, failed_songs
 
 # subsequent two nodes potentially redundant - m3u method used now
 def create_playlist(songs: Dict, name):

@@ -1,10 +1,7 @@
 import mysql.connector
 
-def connect_mysql():
+def connect_mysql(mysql_password):
     try:
-        with open('/Users/oscardilkes/PycharmProjects/songSort/pw', 'r') as file:
-            mysql_password = file.read().rstrip()
-
         mydb = mysql.connector.connect(
             host="localhost",
             user="root",
