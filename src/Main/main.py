@@ -1,33 +1,38 @@
-import os
 
-import xmlHandler
-import dbHandler
 from itertools import islice
-import m3uHandler
-from src.Main.audioAnalyser import para_extract
+from venv import create
 
-def main(xml_path, output_dir):
+import rekordbox_handler
+import db_handler
+from rekordbox_handler import create_new_playlist
+from src.Main.audio_analyser import para_extract
+
+def main(number_songs):
     failed_songs = []
     try:
-        songs, failed_songs_xml = xmlHandler.parse_xml(xml_path)
+        rdb, songs, failed_songs_xml = rekordbox_handler.get_songs()
         failed_songs.extend(failed_songs_xml)
 
         # limit songs for testing
-        songs = dict(islice(songs.items(), 30))
+        songs = dict(islice(songs.items(), number_songs))
 
-        db_path = os.path.join(output_dir, "songSort.db")
-        conn = dbHandler.connect_sqlite(db_path)
+        db_path = "/Users/oscardilkes/Documents/songSort/songSort.db"
+        conn = db_handler.connect_sqlite(db_path)
 
         # split into new and existing (in database)
-        new_songs, existing_songs = dbHandler.dict_split_existing(conn, songs)
+        new_songs, existing_songs = db_handler.dict_split_existing(conn, songs)
+
+        print("dog")
 
         # extract audio features & calculate energy score
         failed_songs_analysis = para_extract(new_songs)
+        print("cat")
+
         failed_songs.extend(failed_songs_analysis)
 
         combined_songs = {**new_songs, **existing_songs}
 
-        dbHandler.update_table(conn, new_songs)
+        db_handler.update_table(conn, new_songs)
 
         filtered_songs = {track_id: song for track_id, song in combined_songs.items() if song.energy_score is not None}
 
@@ -43,9 +48,9 @@ def main(xml_path, output_dir):
         medium_energy = dict(sorted_items[split1:split2])
         high_energy = dict(sorted_items[split2:])
 
-        m3uHandler.create_m3u_playlist(low_energy, "Low Energy", output_dir)
-        m3uHandler.create_m3u_playlist(medium_energy, "Medium Energy", output_dir)
-        m3uHandler.create_m3u_playlist(high_energy, "High Energy", output_dir)
+        create_new_playlist(rdb, low_energy, "Low Energy")
+        create_new_playlist(rdb, medium_energy, "Medium Energy")
+        create_new_playlist(rdb, high_energy, "High Energy")
 
         return failed_songs
 
@@ -55,4 +60,4 @@ def main(xml_path, output_dir):
         print(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
-    main()
+    main(30)

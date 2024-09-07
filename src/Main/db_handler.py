@@ -1,5 +1,4 @@
 import sqlite3
-import os
 
 def connect_sqlite(db_path="songSort.db"):
     try:
@@ -7,10 +6,19 @@ def connect_sqlite(db_path="songSort.db"):
         print(f"Connected to SQLite database at {db_path}")
 
         create_table(conn)
+        truncate_table(conn)
         return conn
     except sqlite3.Error as e:
         print(f"Error connecting to SQLite: {e}")
         return None
+
+def truncate_table(conn):
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM songs")
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Error truncating table: {e}")
 
 def create_table(conn):
     try:
@@ -53,7 +61,6 @@ def add_song(conn, song):
         )
         cursor.execute(sql, values)
         conn.commit()
-        print(f"Song added to the database: {song.title}")
     except sqlite3.Error as e:
         print(f"Error adding song: {e}")
 

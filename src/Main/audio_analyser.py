@@ -4,6 +4,7 @@ import numpy as np
 from librosa.feature import spectral_centroid
 from multiprocessing import Pool
 
+
 def extract_features(song):
     try:
         # load audio file
@@ -23,10 +24,13 @@ def extract_features(song):
 
     except FileNotFoundError:
         print(f"Audio file not found: {song.filepath}")
-        return {"Track ID": song.track_id, "Title": song.title, "Reason": "Audio file not found", "Filepath": song.filepath}
+        return {"Track ID": song.track_id, "Title": song.title, "Reason": "Audio file not found",
+                "Filepath": song.filepath}
     except Exception as e:
         print(f"Error processing file {song.filepath}: {e}")
-        return {"Track ID": song.track_id, "Title": song.title, "Reason": "Error processing file", "Detail": str(e), "Filepath": song.filepath}
+        return {"Track ID": song.track_id, "Title": song.title, "Reason": "Error processing file", "Detail": str(e),
+                "Filepath": song.filepath}
+
 
 def para_extract(songs, num_workers=os.cpu_count()):
     # use pool to process faster
