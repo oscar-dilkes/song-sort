@@ -6,7 +6,7 @@ from multiprocessing import Pool
 
 def extract_features(song):
     try:
-        #  load audio file
+        # load audio file
         y, sr = librosa.load(song.filepath, mono=True)
         stft = np.abs(librosa.stft(y))
 

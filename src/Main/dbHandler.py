@@ -2,19 +2,10 @@ import sqlite3
 import os
 
 def connect_sqlite(db_path="songSort.db"):
-    """
-    Connect to SQLite database, creating it if it doesn't exist.
-    Args:
-        db_path (str): The path to the SQLite database file.
-    Returns:
-        sqlite3.Connection: SQLite database connection object.
-    """
     try:
-        # Connect to the SQLite database (creates file if it doesn't exist)
         conn = sqlite3.connect(db_path)
         print(f"Connected to SQLite database at {db_path}")
 
-        # Create the 'songs' table if it doesn't exist
         create_table(conn)
         return conn
     except sqlite3.Error as e:
@@ -22,11 +13,6 @@ def connect_sqlite(db_path="songSort.db"):
         return None
 
 def create_table(conn):
-    """
-    Create the 'songs' table in SQLite if it doesn't exist.
-    Args:
-        conn (sqlite3.Connection): SQLite database connection object.
-    """
     try:
         cursor = conn.cursor()
         cursor.execute("""
@@ -48,12 +34,6 @@ def create_table(conn):
         print(f"Error creating table: {e}")
 
 def add_song(conn, song):
-    """
-    Add a song to the SQLite database.
-    Args:
-        conn (sqlite3.Connection): SQLite database connection object.
-        song (Song): Song object containing song details.
-    """
     try:
         cursor = conn.cursor()
         sql = """
@@ -78,24 +58,10 @@ def add_song(conn, song):
         print(f"Error adding song: {e}")
 
 def update_table(conn, songs):
-    """
-    Update the SQLite table with new songs.
-    Args:
-        conn (sqlite3.Connection): SQLite database connection object.
-        songs (dict): Dictionary of Song objects keyed by their track IDs.
-    """
     for song in songs.values():
         add_song(conn, song)
 
 def validate_song(conn, track_id):
-    """
-    Validate if a song exists in the SQLite database.
-    Args:
-        conn (sqlite3.Connection): SQLite database connection object.
-        track_id (str): Track ID of the song to validate.
-    Returns:
-        bool: True if the song exists, False otherwise.
-    """
     cursor = conn.cursor()
     try:
         sql = "SELECT COUNT(*) FROM songs WHERE id = ?"
@@ -109,14 +75,6 @@ def validate_song(conn, track_id):
         cursor.close()
 
 def dict_split_existing(conn, songs):
-    """
-    Split songs into new and existing based on their existence in the SQLite database.
-    Args:
-        conn (sqlite3.Connection): SQLite database connection object.
-        songs (dict): Dictionary of Song objects keyed by their track IDs.
-    Returns:
-        tuple: (new_songs, existing_songs) where each is a dictionary of Song objects.
-    """
     new_songs = {}
     existing_songs = {}
 
@@ -126,20 +84,11 @@ def dict_split_existing(conn, songs):
         else:
             new_songs[track_id] = song
 
-    # Fetch energy scores for the songs that are already in the database
     existing_songs = fetch_energy_scores(conn, existing_songs)
 
     return new_songs, existing_songs
 
 def fetch_energy_scores(conn, existing_songs):
-    """
-    Fetch energy scores for existing songs from the SQLite database.
-    Args:
-        conn (sqlite3.Connection): SQLite database connection object.
-        existing_songs (dict): Dictionary of Song objects keyed by their track IDs.
-    Returns:
-        dict: Updated dictionary of existing Song objects with fetched energy scores.
-    """
     track_ids = list(existing_songs.keys())
 
     if not track_ids:
@@ -173,12 +122,6 @@ def fetch_energy_scores(conn, existing_songs):
     return existing_songs
 
 def update_filepaths(conn, updates):
-    """
-    Update file paths for songs in the SQLite database.
-    Args:
-        conn (sqlite3.Connection): SQLite database connection object.
-        updates (list): List of tuples containing (filepath, track_id) for updates.
-    """
     sql = "UPDATE songs SET filepath = ? WHERE id = ?"
     cursor = conn.cursor()
     try:
